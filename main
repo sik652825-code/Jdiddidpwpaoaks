@@ -73,24 +73,11 @@ def get_payment_keyboard():
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# ------------------ АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ СТРОКИ ПОД НАЗВАНИЕМ ------------------
-async def update_user_count():
-    while True:
-        try:
-            await bot.set_my_description(
-                description=f"🎮 KRASTU METRO SHOP"
-            )
-            logger.info("✅ Профиль бота обновлен.")
-        except Exception as e:
-            logger.error(f"Ошибка обновления описания: {e}")
-        await asyncio.sleep(600)
-
 # ------------------ ОСНОВНЫЕ ОБРАБОТЧИКИ ------------------
 @dp.message(Command("start"))
 async def start_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]: return
 
-    # ИСПРАВЛЕННОЕ ПРИВЕТСТВИЕ
     welcome_text = (
         "👋 Добро пожаловать в KRASTU METRO SHOP!\n\n"
         "Здесь можно посмотреть товары по игре METRO ROYALE, "
@@ -301,15 +288,12 @@ async def unknown_command(message: types.Message, state: FSMContext):
 
 # ------------------ ЗАПУСК БОТА ------------------
 async def main():
-    logger.info("🚀 Бот KRASTU METRO SHOP запускается...")
+    logger.info("🚀 Бот запускается...")
     await bot.delete_webhook(drop_pending_updates=True)
     
-    await bot.set_my_name(name=f"KRASTU SHOP BOT")
-    await bot.set_my_description(description=f"🎮 KRASTU METRO SHOP")
-    logger.info("✅ Профиль настроен.")
-
-    asyncio.create_task(update_user_count())
-
+    # Убрали set_my_name и set_my_description, чтобы избежать бана от Telegram.
+    # Название и описание бота настройте в BotFather один раз вручную.
+    
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
