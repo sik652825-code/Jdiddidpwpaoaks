@@ -3,11 +3,11 @@ import logging
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
-from aiogram.fsm.state import State, StatesGroup 
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
-    InlineKeyboardMarkup, InlineKeyboardButton, 
+    InlineKeyboardMarkup, InlineKeyboardButton,
     KeyboardButton, ReplyKeyboardMarkup,
     URLInputFile
 )
@@ -36,13 +36,12 @@ class SupportStates(StatesGroup):
 def get_main_keyboard():
     keyboard = [
         [KeyboardButton(text="🏷️ СОПРОВОЖДЕНИЯ")],
-        [KeyboardButton(text="🎁 ТОВАРЫ")],
-        [KeyboardButton(text="🤖 ПРИОБРЕСТИ БОТА")],
+        [KeyboardButton(text="🎯 КУПИТЬ Ф6 С МК ВК")],
         [KeyboardButton(text="🛠️ ПОДДЕРЖКА")]
     ]
     return ReplyKeyboardMarkup(
-        keyboard=keyboard, 
-        resize_keyboard=True, 
+        keyboard=keyboard,
+        resize_keyboard=True,
         one_time_keyboard=False,
         input_field_placeholder="Выбери раздел..."
     )
@@ -76,7 +75,9 @@ def get_payment_keyboard():
 # ------------------ ОСНОВНЫЕ ОБРАБОТЧИКИ ------------------
 @dp.message(Command("start"))
 async def start_command(message: types.Message):
-    if message.chat.type in ["group", "supergroup"]: return
+    # Полная тишина в группах и супергруппах
+    if message.chat.type in ["group", "supergroup"]:
+        return
 
     welcome_text = (
         "👋 Добро пожаловать в KRASTU METRO SHOP!\n\n"
@@ -94,7 +95,7 @@ async def start_command(message: types.Message):
             reply_markup=get_main_keyboard()
         )
     except Exception as e:
-        logger.error(f"Ошибка отправки фото: {e}")
+        logger.error(f"Ошибка отправки фото при start: {e}")
         await message.answer(welcome_text, reply_markup=get_main_keyboard())
         
     logger.info(f"Пользователь {message.from_user.id} запустил бота")
@@ -121,21 +122,22 @@ async def support_menu(message: types.Message):
         logger.error(f"Ошибка отправки фото сопровождений: {e}")
         await message.answer(text, reply_markup=get_support_keyboard())
 
-@dp.message(F.text == "🎁 ТОВАРЫ")
+@dp.message(F.text == "🎯 КУПИТЬ Ф6 С МК ВК")
 async def items_menu(message: types.Message):
     if message.chat.type in ["group", "supergroup"]: return
     
-    text = "🛒 Актуальные товары которые в наличии:"
-    await message.answer(text, reply_markup=get_items_keyboard())
-
-@dp.message(F.text == "🤖 ПРИОБРЕСТИ БОТА")
-async def buy_bot(message: types.Message):
-    if message.chat.type in ["group", "supergroup"]: return
-    text = (
-        "💼 Нужен такой же бот под свой магазин?\n\n"
-        "📩 Пиши разработчику: @sikvvg"
-    )
-    await message.answer(text, reply_markup=get_main_keyboard())
+    text = "🔥 ф6 с мк вк в наличии:"
+    photo_url = "https://i.ibb.co/RGkddM5X/IMG-2426.jpg"
+    
+    try:
+        await message.answer_photo(
+            photo=URLInputFile(photo_url),
+            caption=text,
+            reply_markup=get_items_keyboard()
+        )
+    except Exception as e:
+        logger.error(f"Ошибка отправки фото ф6: {e}")
+        await message.answer(text, reply_markup=get_items_keyboard())
 
 @dp.message(F.text == "🛠️ ПОДДЕРЖКА")
 async def support_chat(message: types.Message, state: FSMContext):
@@ -206,8 +208,7 @@ async def support_callback(callback: types.CallbackQuery):
             "⬇️ Нажимай «Подтвердить покупку»."
         )
         
-        await callback.message.delete()
-        await callback.message.answer_photo(
+        await callback.message.reply_photo(
             photo=URLInputFile(item['image']),
             caption=text,
             reply_markup=get_payment_keyboard()
@@ -226,17 +227,15 @@ async def payment_callback(callback: types.CallbackQuery):
         "Бот на тестовом периоде, скоро запустим.",
         show_alert=True
     )
-    await callback.message.edit_caption(
-        caption="🔒 Оплата пока не работает, бот на бете.\nВернись чуть позже.",
-        reply_markup=get_support_keyboard()
+    await callback.message.reply(
+        "🔒 Оплата пока не работает, бот на бете.\nВернись чуть позже."
     )
     logger.info(f"Пользователь {callback.from_user.id} пытался оплатить (БЕТА)")
 
 # ------------------ INLINE НАВИГАЦИЯ ------------------
 @dp.callback_query(lambda c: c.data == "back_to_main")
 async def back_to_main(callback: types.CallbackQuery):
-    await callback.message.delete()
-    await callback.message.answer("🏠 Главное меню.", reply_markup=get_main_keyboard())
+    await callback.message.reply("🏠 Главное меню.", reply_markup=get_main_keyboard())
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "back_to_support")
@@ -248,16 +247,15 @@ async def back_to_support(callback: types.CallbackQuery):
     )
     photo_url = "https://i.ibb.co/jP4MhYLH/IMG-2402.jpg"
     
-    await callback.message.delete()
     try:
-        await callback.message.answer_photo(
+        await callback.message.reply_photo(
             photo=URLInputFile(photo_url),
             caption=text,
             reply_markup=get_support_keyboard()
         )
     except Exception as e:
         logger.error(f"Ошибка отправки фото при возврате: {e}")
-        await callback.message.answer(text, reply_markup=get_support_keyboard())
+        await callback.message.reply(text, reply_markup=get_support_keyboard())
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "item_f6")
@@ -268,7 +266,7 @@ async def item_f6_callback(callback: types.CallbackQuery):
         "⏳ Пока не продается, бот на бете.\n"
         "📩 Напиши в поддержку, если срочно."
     )
-    await callback.message.edit_text(text)
+    await callback.message.reply(text)
     await callback.answer()
 
 # ------------------ ЛОВУШКА ДЛЯ СООБЩЕНИЙ ------------------
@@ -288,12 +286,13 @@ async def unknown_command(message: types.Message, state: FSMContext):
 
 # ------------------ ЗАПУСК БОТА ------------------
 async def main():
-    logger.info("🚀 Бот запускается...")
+    logger.info("🚀 Бот KRASTU METRO SHOP запускается...")
     await bot.delete_webhook(drop_pending_updates=True)
     
-    # Убрали set_my_name и set_my_description, чтобы избежать бана от Telegram.
-    # Название и описание бота настройте в BotFather один раз вручную.
-    
+    # Мы УДАЛИЛИ весь код обновления имени и описания.
+    # Теперь бот не будет пытаться менять их и получать бан от Telegram.
+    # Имя уже настроено в BotFather и не требует изменений.
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
